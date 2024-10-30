@@ -57,6 +57,7 @@ contract VaultToken is ERC20, Ownable {
     }
 }
 
+// looking into using a mapping for the data structure
 contract QueuePlugin is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
@@ -197,7 +198,7 @@ contract QueuePlugin is ReentrancyGuard, Ownable {
             IGauge(gauge)._withdraw(queue[head].account, queue[head].power);
 
             // Berachain Rewards Vault Delegate Stake
-            IRewardVault(rewardVault).delegateWithdraw(account, queue[head].power);
+            IRewardVault(rewardVault).delegateWithdraw(queue[head].account, queue[head].power);
             VaultToken(vaultToken).burn(address(this), queue[head].power);
 
             emit Plugin__ClickRemoved(queue[head].tokenId, queue[head].account, queue[head].power, queue[head].message);
