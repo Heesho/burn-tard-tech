@@ -46,7 +46,7 @@ contract VaultToken is ERC20, Ownable {
     }
 }
 
-abstract contract NetPlugin is ReentrancyGuard, Ownable {
+contract NetPlugin is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     /*----------  CONSTANTS  --------------------------------------------*/
