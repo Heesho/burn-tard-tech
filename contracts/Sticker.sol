@@ -7,15 +7,22 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+interface IPlugin {
+    function depositFor(address account, uint256 amount) external;
+    function withdrawTo(address account, uint256 amount) external;
+}
+
 contract Sticker is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable {
 
     /*----------  CONSTANTS  --------------------------------------------*/
 
     uint256 public constant INITIAL_PRICE = 0.01 ether;
+    uint256 public constant MAX_SUPPLY = 10000;
 
     /*----------  STATE VARIABLES  --------------------------------------*/
 
     address public treasury;
+    address public plugin;
     uint256 public nextTokenId;
 
     mapping(uint256 => uint256) public id_Price;
@@ -25,7 +32,8 @@ contract Sticker is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable {
 
     error Sticker__InsufficientValue();
     error Sticker__InvalidTokenId();
-    error Sticker__OnlyTreasury();
+    error Sticker__MaxSupplyReached();
+    error Sticker__TransferDisabled();
 
     /*----------  EVENTS ------------------------------------------------*/
 
@@ -34,11 +42,6 @@ contract Sticker is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable {
     event Sticker__Sell(uint256 indexed tokenId, address indexed owner, uint256 price);
 
     /*----------  MODIFIERS  --------------------------------------------*/
-
-    modifier onlyTreasury() {
-        if (msg.sender != treasury) revert Sticker__OnlyTreasury();
-        _;
-    }
 
     /*----------  FUNCTIONS  --------------------------------------------*/
 
@@ -56,9 +59,14 @@ contract Sticker is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable {
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
 
+        if (nextTokenId > MAX_SUPPLY) revert Sticker__MaxSupplyReached();
+
         emit Sticker__Create(tokenId, to, uri);
 
-        payable(treasury).transfer(INITIAL_PRICE * 20 / 100);
+        payable(treasury).transfer(INITIAL_PRICE * 10 / 100);
+        payable(plugin).transfer(INITIAL_PRICE * 10 / 100);
+
+        IPlugin(plugin).depositFor(to, INITIAL_PRICE);
     }
 
     function buy(uint256 tokenId) public payable {
@@ -75,7 +83,11 @@ contract Sticker is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable {
 
         payable(previousOwner).transfer((previousPrice * 80 / 100) + (id_Price[tokenId] * 16 / 100));
         payable(id_Creator[tokenId]).transfer(id_Price[tokenId] * 2 / 100);
-        payable(treasury).transfer(id_Price[tokenId] * 2 / 100);
+        payable(treasury).transfer(id_Price[tokenId] * 1 / 100);
+        payable(plugin).transfer(id_Price[tokenId] * 1 / 100);
+
+        IPlugin(plugin).withdrawTo(previousOwner, previousPrice);
+        IPlugin(plugin).depositFor(msg.sender, id_Price[tokenId]);
         
     }
 
@@ -91,17 +103,49 @@ contract Sticker is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable {
         emit Sticker__Sell(tokenId, previousOwner, previousPrice * 80 / 100);
 
         payable(previousOwner).transfer(previousPrice * 80 / 100);
+
+        IPlugin(plugin).withdrawTo(previousOwner, previousPrice);
     }
 
     // Function to receive Ether. msg.data must be empty
     receive() external payable {}
 
-    // Fallback function is called when msg.data is not empty
-    fallback() external payable {}
-
     /*---------- RESTRICTED FUNCTIONS ----------------------------------*/
 
+    function setPlugin(address _plugin) public onlyOwner {
+        plugin = _plugin;
+    }
+
+    function setTreasury(address _treasury) public onlyOwner {
+        treasury = _treasury;
+    }
+
     /*----------  OVERRIDES  --------------------------------------------*/
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual override(ERC721) {
+        revert Sticker__TransferDisabled();
+    }
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual override(ERC721) {
+        revert Sticker__TransferDisabled();
+    }
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) public virtual override(ERC721) {
+        revert Sticker__TransferDisabled();
+    }
 
     function _beforeTokenTransfer(address from, address to, uint256 firsTokenId, uint256 batchSize) internal override(ERC721, ERC721Enumerable) {
         super._beforeTokenTransfer(from, to, firsTokenId, batchSize);
