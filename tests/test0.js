@@ -11,7 +11,7 @@ const one = convert("1", 18);
 
 let owner, treasury, user0, user1, user2, user3;
 let base, voter;
-let units, key, factory, plugin, multicall, vaultFactory;
+let sticker, plugin, multicall, vaultFactory;
 
 describe("local: test0", function () {
   before("Initial set up", async function () {
@@ -33,44 +33,29 @@ describe("local: test0", function () {
     voter = await voterArtifact.deploy();
     console.log("- Voter Initialized");
 
-    const keyArtifact = await ethers.getContractFactory("Key");
-    key = await keyArtifact.deploy();
-    console.log("- Key Initialized");
+    const stickerArtifact = await ethers.getContractFactory("Sticker");
+    sticker = await stickerArtifact.deploy();
+    console.log("- Sticker Initialized");
 
-    const unitsArtifact = await ethers.getContractFactory("Units");
-    units = await unitsArtifact.deploy();
-    console.log("- Units Initialized");
-
-    const factoryArtifact = await ethers.getContractFactory("Factory");
-    factory = await factoryArtifact.deploy(units.address, key.address);
-    console.log("- Factory Initialized");
-
-    const pluginArtifact = await ethers.getContractFactory("QueuePlugin");
+    const pluginArtifact = await ethers.getContractFactory("NetPlugin");
     plugin = await pluginArtifact.deploy(
       base.address,
       voter.address,
       [base.address],
       [base.address],
-      treasury.address,
-      factory.address,
-      units.address,
-      key.address,
-      vaultFactory.address
+      vaultFactory.address,
+      sticker.address
     );
     console.log("- Plugin Initialized");
 
     const multicallArtifact = await ethers.getContractFactory("Multicall");
     multicall = await multicallArtifact.deploy(
-      units.address,
-      factory.address,
-      key.address,
+      sticker.address,
       plugin.address,
       AddressZero
     );
     console.log("- Multicall Initialized");
 
-    await units.setMinter(factory.address, true);
-    await units.setMinter(plugin.address, true);
     await voter.setPlugin(plugin.address);
     console.log("- System set up");
 
@@ -78,14 +63,10 @@ describe("local: test0", function () {
     console.log();
   });
 
-  it("User0 mints a clicker", async function () {
+  it("First test", async function () {
     console.log("******************************************************");
-    await key.connect(user0).mint();
-    await key.connect(user1).mint();
-    await key.connect(user2).mint();
-    await key.connect(user3).mint();
   });
-
+  /*
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
     let price = await plugin.getPrice();
@@ -2418,4 +2399,5 @@ describe("local: test0", function () {
     console.log("Tail: ", await plugin.tail());
     console.log("Size: ", await plugin.count());
   });
+  */
 });

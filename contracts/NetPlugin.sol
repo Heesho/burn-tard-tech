@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 interface IGauge {
@@ -29,7 +30,7 @@ interface IBerachainRewardsVaultFactory {
     function createRewardsVault(address _vaultToken) external returns (address);
 }
 
-interface IRewardVault {
+interface IBerachainRewardsVault {
     function delegateStake(address account, uint256 amount) external;
     function delegateWithdraw(address account, uint256 amount) external;
 }
@@ -167,11 +168,10 @@ contract NetPlugin is ReentrancyGuard, Ownable {
         uint256 duration = IBribe(bribe).DURATION();
         uint256 balance = address(this).balance;
         if (balance > duration) {
-            address token = getToken();
-            IWBERA(token).deposit{value: balance}();
-            IERC20(token).safeApprove(bribe, 0);
-            IERC20(token).safeApprove(bribe, balance);
-            IBribe(bribe).notifyRewardAmount(token, balance);
+            IWBERA(address(token)).deposit{value: balance}();
+            token.safeApprove(bribe, 0);
+            token.safeApprove(bribe, balance);
+            IBribe(bribe).notifyRewardAmount(address(token), balance);
         }
     }
 
@@ -202,11 +202,11 @@ contract NetPlugin is ReentrancyGuard, Ownable {
     }
 
     function getProtocol() public view virtual returns (string memory) {
-        return protocol;
+        return PROTOCOL;
     }
 
     function getName() public view virtual returns (string memory) {
-        return name;
+        return SYMBOL;
     }
 
     function getVoter() public view returns (address) {
