@@ -82,10 +82,10 @@ contract Sticker is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuard,
 
         emit Sticker__Buy(tokenId, previousOwner, msg.sender, msg.value);
 
-        payable(previousOwner).transfer((previousPrice * 80 / 100) + (id_Price[tokenId] * 16 / 100));
+        payable(previousOwner).transfer((previousPrice * 80 / 100) + (id_Price[tokenId] * 15 / 100));
         payable(id_Creator[tokenId]).transfer(id_Price[tokenId] * 2 / 100);
+        payable(plugin).transfer(id_Price[tokenId] * 2 / 100);
         payable(treasury).transfer(id_Price[tokenId] * 1 / 100);
-        payable(plugin).transfer(id_Price[tokenId] * 1 / 100);
 
         IPlugin(plugin).withdrawTo(previousOwner, previousPrice);
         IPlugin(plugin).depositFor(msg.sender, id_Price[tokenId]);

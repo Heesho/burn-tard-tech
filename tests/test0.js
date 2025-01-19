@@ -52,10 +52,11 @@ describe("local: test0", function () {
     multicall = await multicallArtifact.deploy(
       sticker.address,
       plugin.address,
-      AddressZero
+      await voter.OTOKEN()
     );
     console.log("- Multicall Initialized");
 
+    await sticker.setPlugin(plugin.address);
     await voter.setPlugin(plugin.address);
     console.log("- System set up");
 
@@ -66,6 +67,29 @@ describe("local: test0", function () {
   it("First test", async function () {
     console.log("******************************************************");
   });
+
+  it("User 0 creates sticker", async function () {
+    console.log("******************************************************");
+    await sticker.connect(user0).create(user0.address, "uri1", {
+      value: pointZeroOne,
+    });
+  });
+
+  it("Sticker State, id 1", async function () {
+    console.log("******************************************************");
+    console.log(
+      "ETH Balance of sticker",
+      divDec(await ethers.provider.getBalance(sticker.address))
+    );
+    let res = await multicall.getSticker(0);
+    console.log("tokenId", res.tokenId);
+    console.log("prevPrice", divDec(res.prevPrice));
+    console.log("buyPrice", divDec(res.buyPrice));
+    console.log("sellPrice", divDec(res.sellPrice));
+    console.log("owner", res.owner);
+    console.log("creator", res.creator);
+  });
+
   /*
   it("User0 clicks cookie", async function () {
     console.log("******************************************************");
