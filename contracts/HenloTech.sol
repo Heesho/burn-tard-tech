@@ -41,12 +41,12 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     /*----------  ERRORS ------------------------------------------------*/
 
     error HenloTech__TransferDisabled();
-    error HenloTech__NotStudentOwner();
-    error HenloTech__InvalidStudent();
+    error HenloTech__NotWorksOwner();
+    error HenloTech__InvalidWorks();
     error HenloTech__FullClass();
     error HenloTech__InvalidClassSize();
-    error HenloTech__StudentGraduated();
-    error HenloTech__StudentExpelled();
+    error HenloTech__WorksGraduated();
+    error HenloTech__WorksExpelled();
     error HenloTech__InsufficientCredits();
 
     /*----------  EVENTS ------------------------------------------------*/
@@ -83,9 +83,9 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     }
 
     function plagiarize(address account,uint256 tokenId) public nonReentrant {
-        if (ownerOf(tokenId) == address(0)) revert HenloTech__InvalidStudent();
-        if (id_Graduated[tokenId]) revert HenloTech__StudentGraduated();
-        if (id_Expelled[tokenId]) revert HenloTech__StudentExpelled();
+        if (ownerOf(tokenId) == address(0)) revert HenloTech__InvalidWorks();
+        if (id_Graduated[tokenId]) revert HenloTech__WorksGraduated();
+        if (id_Expelled[tokenId]) revert HenloTech__WorksExpelled();
 
         uint256 previousTuition = id_Tuition[tokenId];
         address previousOwner = ownerOf(tokenId);
@@ -107,9 +107,9 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     }
 
     function expell(uint256 tokenId) public nonReentrant {
-        if (msg.sender != ownerOf(tokenId)) revert HenloTech__NotStudentOwner();
-        if (id_Graduated[tokenId]) revert HenloTech__StudentGraduated();
-        if (id_Expelled[tokenId]) revert HenloTech__StudentExpelled();
+        if (msg.sender != ownerOf(tokenId)) revert HenloTech__NotWorksOwner();
+        if (id_Graduated[tokenId]) revert HenloTech__WorksGraduated();
+        if (id_Expelled[tokenId]) revert HenloTech__WorksExpelled();
 
         address owner = ownerOf(tokenId);
         uint256 tuition = id_Tuition[tokenId];
@@ -123,9 +123,9 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     }
 
     function graduate(uint256 tokenId) public nonReentrant {
-        if (ownerOf(tokenId) == address(0)) revert HenloTech__InvalidStudent();
-        if (id_Expelled[tokenId]) revert HenloTech__StudentExpelled();
-        if (id_Graduated[tokenId]) revert HenloTech__StudentGraduated();
+        if (ownerOf(tokenId) == address(0)) revert HenloTech__InvalidWorks();
+        if (id_Expelled[tokenId]) revert HenloTech__WorksExpelled();
+        if (id_Graduated[tokenId]) revert HenloTech__WorksGraduated();
         if (id_Tuition[tokenId] < graduationRequirement) revert HenloTech__InsufficientCredits();
 
         address owner = ownerOf(tokenId);
@@ -146,8 +146,8 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     /*---------- RESTRICTED FUNCTIONS ----------------------------------*/
 
     function ownerExpell(uint256 tokenId) public nonReentrant onlyOwner {
-        if (id_Graduated[tokenId]) revert HenloTech__StudentGraduated();
-        if (id_Expelled[tokenId]) revert HenloTech__StudentExpelled();
+        if (id_Graduated[tokenId]) revert HenloTech__WorksGraduated();
+        if (id_Expelled[tokenId]) revert HenloTech__WorksExpelled();
 
         address owner = ownerOf(tokenId);
         uint256 tuition = id_Tuition[tokenId];
