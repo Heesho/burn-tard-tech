@@ -26,10 +26,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     /*----------  STATE VARIABLES  --------------------------------------*/
 
     address public immutable token;
-
-    address public plugin;
-    address public treasury;
-    address public developer;
+    address public immutable plugin;
 
     uint256 public nextTokenId;
     uint256 public classSize = 10;
@@ -59,19 +56,14 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     event HenloTech__Expelled(address indexed owner, uint256 indexed tokenId);
     event HenloTech__Graduated(address indexed owner, address indexed creator, uint256 indexed tokenId);
     event HenloTech__ClassSizeSet(uint256 classSize);
-    event HenloTech__DeveloperSet(address developer);
-    event HenloTech__PluginSet(address plugin);
-    event HenloTech__TreasurySet(address treasury);
-
-    /*----------  MODIFIERS  --------------------------------------------*/
 
     /*----------  FUNCTIONS  --------------------------------------------*/
 
-    constructor(address _token) 
+    constructor(address _token, address _plugin) 
         ERC721("HenloTech", "HenloTech")
     {
         token = _token;
-        treasury = msg.sender;
+        plugin = _plugin;
     }
 
     function enroll(address account, string memory uri) public nonReentrant {
@@ -86,7 +78,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
 
         emit HenloTech__Enrolled(account, tokenId, uri);
 
-        IERC20(token).transferFrom(msg.sender, address(this), INITIAL_TUITION);
+        IERC20(token).safeTransferFrom(msg.sender, plugin, INITIAL_TUITION);
         IPlugin(plugin).depositFor(account, INITIAL_TUITION);
     }
 
@@ -106,9 +98,9 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
 
         emit HenloTech__Plagiarized(previousOwner, account, tokenId, newTuition);
 
-        IERC20(token).transferFrom(msg.sender, previousOwner, previousTuition + surplus / 2);
+        IERC20(token).transferFrom(msg.sender, previousOwner, previousTuition + (surplus * 5 / 10));
+        IERC20(token).safeTransferFrom(msg.sender, plugin, surplus * 4 / 10);
         IERC20(token).safeTransferFrom(msg.sender, id_Creator[tokenId], surplus * 1 / 10);
-        IERC20(token).safeTransferFrom(msg.sender, address(this), surplus * 4 / 10);
 
         IPlugin(plugin).withdrawTo(previousOwner, previousTuition);
         IPlugin(plugin).depositFor(account, newTuition);
@@ -153,6 +145,21 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
 
     /*---------- RESTRICTED FUNCTIONS ----------------------------------*/
 
+    function ownerExpell(uint256 tokenId) public nonReentrant onlyOwner {
+        if (id_Graduated[tokenId]) revert HenloTech__StudentGraduated();
+        if (id_Expelled[tokenId]) revert HenloTech__StudentExpelled();
+
+        address owner = ownerOf(tokenId);
+        uint256 tuition = id_Tuition[tokenId];
+
+        id_Expelled[tokenId] = true;
+        classSize++;
+
+        emit HenloTech__Expelled(tokenId);
+
+        IPlugin(plugin).withdrawTo(owner, tuition);
+    }
+
     function setClassSize(uint256 _classSize) public onlyOwner {
         if (_classSize <= classSize) revert HenloTech__InvalidClassSize();
         classSize = _classSize;
@@ -162,22 +169,6 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     function setGraduationRequirement(uint256 _graduationRequirement) public onlyOwner {
         graduationRequirement = _graduationRequirement;
         emit HenloTech__GraduationRequirementSet(_graduationRequirement);
-    }
-
-    function setDeveloper(address _developer) public {
-        if (msg.sender != developer) revert HenloTech__NotDeveloper();
-        developer = _developer;
-        emit HenloTech__DeveloperSet(_developer);
-    }
-
-    function setTreasury(address _treasury) public onlyOwner {
-        treasury = _treasury;
-        emit HenloTech__TreasurySet(_treasury);
-    }
-
-    function setPlugin(address _plugin) public onlyOwner {
-        plugin = _plugin;
-        emit HenloTech__PluginSet(_plugin);
     }
 
     /*----------  OVERRIDES  --------------------------------------------*/
