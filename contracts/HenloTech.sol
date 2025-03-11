@@ -49,6 +49,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     error HenloTech__WorksExpelled();
     error HenloTech__InsufficientCredits();
     error HenloTech__AlreadyInitialized();
+    
     /*----------  EVENTS ------------------------------------------------*/
 
     event HenloTech__Enrolled(address indexed creator, uint256 indexed tokenId, string uri);
