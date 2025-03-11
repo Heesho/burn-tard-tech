@@ -24,12 +24,12 @@ contract RewardVault {
 
 }
 
-contract BerachainRewardsVaultFactory {
+contract BerachainRewardVaultFactory {
     
     constructor() {
     }
 
-    function createRewardsVault(address vaultToken) external returns (address) {
+    function createRewardVault(address vaultToken) external returns (address) {
         return address(new RewardVault(vaultToken));
     }
 

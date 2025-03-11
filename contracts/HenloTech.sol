@@ -26,7 +26,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     /*----------  STATE VARIABLES  --------------------------------------*/
 
     address public immutable token;
-    address public immutable plugin;
+    address public plugin;
 
     uint256 public nextTokenId;
     uint256 public classSize = 10;
@@ -48,7 +48,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     error HenloTech__WorksGraduated();
     error HenloTech__WorksExpelled();
     error HenloTech__InsufficientCredits();
-
+    error HenloTech__AlreadyInitialized();
     /*----------  EVENTS ------------------------------------------------*/
 
     event HenloTech__Enrolled(address indexed creator, uint256 indexed tokenId, string uri);
@@ -56,6 +56,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     event HenloTech__Expelled(address indexed owner, uint256 indexed tokenId);
     event HenloTech__Graduated(address indexed owner, address indexed creator, uint256 indexed tokenId);
     event HenloTech__ClassSizeSet(uint256 classSize);
+    event HenloTech__Initialized(address plugin);
 
     /*----------  FUNCTIONS  --------------------------------------------*/
 
@@ -169,6 +170,12 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     function setGraduationRequirement(uint256 _graduationRequirement) public onlyOwner {
         graduationRequirement = _graduationRequirement;
         emit HenloTech__GraduationRequirementSet(_graduationRequirement);
+    }
+
+    function initialize(address _plugin) public onlyOwner {
+        if (plugin != address(0)) revert HenloTech__AlreadyInitialized();
+        plugin = _plugin;
+        emit HenloTech__Initialized(plugin);
     }
 
     /*----------  OVERRIDES  --------------------------------------------*/

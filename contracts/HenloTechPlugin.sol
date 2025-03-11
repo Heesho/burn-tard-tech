@@ -26,17 +26,17 @@ interface IWBERA {
     function deposit() external payable;
 }
 
-interface IBerachainRewardsVaultFactory {
-    function createRewardsVault(address _vaultToken) external returns (address);
+interface IBerachainRewardVaultFactory {
+    function createRewardVault(address _vaultToken) external returns (address);
 }
 
-interface IBerachainRewardsVault {
+interface IBerachainRewardVault {
     function delegateStake(address account, uint256 amount) external;
     function delegateWithdraw(address account, uint256 amount) external;
 }
 
 contract VaultToken is ERC20, Ownable {
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+    constructor() ERC20("HenloTech", "HenloTech") {}
 
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
@@ -47,44 +47,49 @@ contract VaultToken is ERC20, Ownable {
     }
 }
 
-contract NetPlugin is ReentrancyGuard, Ownable {
+contract HenloTechPlugin is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     /*----------  CONSTANTS  --------------------------------------------*/
 
-    string public constant SYMBOL = "StickerNet";
-    string public constant PROTOCOL = "Gumball";
-    string public constant VAULT_NAME = "StickerNetVault";
+    string public constant SYMBOL = "HenloTech";
+    string public constant PROTOCOL = "GumBall6900";
+    uint256 public constant DURATION = 7 days;
 
     /*----------  STATE VARIABLES  --------------------------------------*/
 
     IERC20 private immutable token;
-    address private immutable sticker;
     address private immutable OTOKEN;
     address private immutable voter;
     address private gauge;
     address private bribe;
+    address[] private assetTokens;
+    address[] private bribeTokens;
 
     address private vaultToken;
     address private rewardVault;
 
-    address[] private assetTokens;
-    address[] private bribeTokens;
-
-    uint256 private _totalSupply;
-    mapping(address => uint256) private _balances;
+    address public immutable henloTech;
+    address public treasury;
+    address public developer;
+    bool public autoBribe = true;
 
     /*----------  ERRORS ------------------------------------------------*/
 
     error Plugin__InvalidZeroInput();
+    error Plugin__InvalidZeroAddress();
     error Plugin__NotAuthorizedVoter();
-    error Plugin__NotAuthorizedSticker();
+    error Plugin__NotAuthorizedHenloTech();
+    error Plugin__NotAuthorizedDeveloper();
 
     /*----------  EVENTS ------------------------------------------------*/
 
     event Plugin__Deposited(address indexed account, uint256 amount);
     event Plugin__Withdrawn(address indexed account, uint256 amount);
-    event Plugin__ClaimedAnDistributed();
+    event Plugin__ClaimedAndDistributed(uint256 amount);
+    event Plugin__AutoBribeSet(bool autoBribe);
+    event Plugin__TreasurySet(address treasury);
+    event Plugin__DeveloperSet(address developer);
 
     /*----------  MODIFIERS  --------------------------------------------*/
 
@@ -98,8 +103,8 @@ contract NetPlugin is ReentrancyGuard, Ownable {
         _;
     }
 
-    modifier onlySticker() {
-        if (msg.sender != sticker) revert Plugin__NotAuthorizedSticker();
+    modifier onlyHenloTech() {
+        if (msg.sender != henloTech) revert Plugin__NotAuthorizedHenloTech();
         _;
     }
 
@@ -111,28 +116,30 @@ contract NetPlugin is ReentrancyGuard, Ownable {
         address[] memory _assetTokens, 
         address[] memory _bribeTokens,
         address _vaultFactory,
-        address _sticker
+        address _henloTech,
+        address _treasury,
+        address _developer
     ) {
         token = IERC20(_token);
         voter = _voter;
         assetTokens = _assetTokens;
         bribeTokens = _bribeTokens;
-        sticker = _sticker;
+        henloTech = _henloTech;
+        treasury = _treasury;
+        developer = _developer;
 
         OTOKEN = IVoter(_voter).OTOKEN();
-        vaultToken = address(new VaultToken(VAULT_NAME, VAULT_NAME));
-        rewardVault = IBerachainRewardsVaultFactory(_vaultFactory).createRewardsVault(vaultToken);
+        vaultToken = address(new VaultToken());
+        rewardVault = IBerachainRewardVaultFactory(_vaultFactory).createRewardVault(vaultToken);
     }
 
     function depositFor(address account, uint256 amount) 
         public
         virtual
         nonZeroInput(amount)
-        onlySticker
+        onlyHenloTech
         nonReentrant
     {
-        _totalSupply = _totalSupply + amount;
-        _balances[account] = _balances[account] + amount;
         emit Plugin__Deposited(account, amount);
 
         IGauge(gauge)._deposit(account, amount);
@@ -140,38 +147,42 @@ contract NetPlugin is ReentrancyGuard, Ownable {
         VaultToken(vaultToken).mint(address(this), amount);
         IERC20(vaultToken).safeApprove(rewardVault, 0);
         IERC20(vaultToken).safeApprove(rewardVault, amount);
-        IBerachainRewardsVault(rewardVault).delegateStake(account, amount);
+        IBerachainRewardVault(rewardVault).delegateStake(account, amount);
     }
 
     function withdrawTo(address account, uint256 amount)
         public
         virtual
         nonZeroInput(amount)
-        onlySticker
+        onlyHenloTech
         nonReentrant
     {
-        _totalSupply = _totalSupply - amount;
-        _balances[msg.sender] = _balances[msg.sender] - amount;
-        emit Plugin__Withdrawn(msg.sender, amount);
+        emit Plugin__Withdrawn(account, amount);
 
-        IGauge(gauge)._withdraw(msg.sender, amount);
+        IGauge(gauge)._withdraw(account, amount);
 
-        IBerachainRewardsVault(rewardVault).delegateWithdraw(msg.sender, amount);
+        IBerachainRewardVault(rewardVault).delegateWithdraw(account, amount);
         VaultToken(vaultToken).burn(address(this), amount);
 
     }
 
     function claimAndDistribute() 
-        public
+        external
         nonReentrant
     {
-        uint256 duration = IBribe(bribe).DURATION();
-        uint256 balance = address(this).balance;
-        if (balance > duration) {
-            IWBERA(address(token)).deposit{value: balance}();
-            token.safeApprove(bribe, 0);
-            token.safeApprove(bribe, balance);
-            IBribe(bribe).notifyRewardAmount(address(token), balance);
+        uint256 balance = token.balanceOf(address(this));
+        if (balance > DURATION) {
+            uint256 fee = balance / 5;
+            token.safeTransfer(treasury, fee * 3 / 5);
+            token.safeTransfer(developer, fee * 2 / 5);
+            if (autoBribe) {
+                token.safeApprove(bribe, 0);
+                token.safeApprove(bribe, balance - fee);
+                IBribe(bribe).notifyRewardAmount(address(token), balance - fee);
+            } else {
+                token.safeTransfer(treasury, balance - fee);
+            }
+            emit Plugin__ClaimedAndDistributed(balance);
         }
     }
 
@@ -179,9 +190,26 @@ contract NetPlugin is ReentrancyGuard, Ownable {
 
     /*----------  RESTRICTED FUNCTIONS  ---------------------------------*/
 
+    function setAutoBribe(bool _autoBribe) external onlyOwner {
+        autoBribe = _autoBribe;
+        emit Plugin__AutoBribeSet(autoBribe);
+    }
+
+    function setTreasury(address _treasury) external onlyOwner {
+        if (_treasury == address(0)) revert Plugin__InvalidZeroAddress();
+        treasury = _treasury;
+        emit Plugin__TreasurySet(treasury);
+    }
+
+    function setDeveloper(address _developer) external {      
+        if (msg.sender != developer) revert Plugin__NotAuthorizedDeveloper();
+        if (_developer == address(0)) revert Plugin__InvalidZeroAddress();
+        developer = _developer;
+        emit Plugin__DeveloperSet(developer);
+    }
+
     function setGauge(address _gauge) external onlyVoter {
         gauge = _gauge;
-    }
 
     function setBribe(address _bribe) external onlyVoter {
         bribe = _bribe;
@@ -190,11 +218,11 @@ contract NetPlugin is ReentrancyGuard, Ownable {
     /*----------  VIEW FUNCTIONS  ---------------------------------------*/
 
     function balanceOf(address account) public view returns (uint256) {
-        return _balances[account];
+        return IGauge(gauge).balanceOf(account);
     }
 
     function totalSupply() public view returns (uint256) {
-        return _totalSupply;
+        return IGauge(gauge).totalSupply();
     }
 
     function getToken() public view virtual returns (address) {
@@ -235,9 +263,5 @@ contract NetPlugin is ReentrancyGuard, Ownable {
 
     function getRewardVault() public view returns (address) {
         return rewardVault;
-    }
-
-    function getSticker() public view returns (address) {
-        return sticker;
     }
 }
