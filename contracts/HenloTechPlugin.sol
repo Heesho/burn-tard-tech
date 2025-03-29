@@ -72,7 +72,9 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
     address public immutable henloTech;
     address public treasury;
     address public developer;
-    bool public autoBribe = true;
+    address public incentives;
+    bool public activeBribes = true;
+    bool public activeIncentives;
 
     /*----------  ERRORS ------------------------------------------------*/
 
@@ -86,10 +88,12 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
 
     event Plugin__Deposited(address indexed account, uint256 amount);
     event Plugin__Withdrawn(address indexed account, uint256 amount);
-    event Plugin__ClaimedAndDistributed(uint256 amount);
-    event Plugin__AutoBribeSet(bool autoBribe);
+    event Plugin__ClaimedAndDistributed(uint256 bribeAmount, uint256 incentivesAmount, uint256 developerAmount, uint256 treasuryAmount);
+    event Plugin__ActiveBribesSet(bool activeBribes);
+    event Plugin__ActiveIncentivesSet(bool activeIncentives);
     event Plugin__TreasurySet(address treasury);
     event Plugin__DeveloperSet(address developer);
+    event Plugin__IncentivesSet(address incentives);
 
     /*----------  MODIFIERS  --------------------------------------------*/
 
@@ -127,6 +131,7 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
         henloTech = _henloTech;
         treasury = _treasury;
         developer = _developer;
+        incentives = _treasury;
 
         OTOKEN = IVoter(_voter).OTOKEN();
         vaultToken = address(new VaultToken());
@@ -166,23 +171,37 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
 
     }
 
-    function claimAndDistribute() 
-        external
-        nonReentrant
-    {
+    function claimAndDistribute() external nonReentrant {
         uint256 balance = token.balanceOf(address(this));
         if (balance > DURATION) {
-            uint256 fee = balance / 5;
-            token.safeTransfer(treasury, fee * 3 / 5);
-            token.safeTransfer(developer, fee * 2 / 5);
-            if (autoBribe) {
-                token.safeApprove(bribe, 0);
-                token.safeApprove(bribe, balance - fee);
-                IBribe(bribe).notifyRewardAmount(address(token), balance - fee);
+            uint256 bribeAmount = balance * 40 / 100;
+            uint256 incentivesAmount = balance * 40 / 100;
+            uint256 developerAmount = balance * 10 / 100;
+            uint256 treasuryAmount = balance - bribeAmount - incentivesAmount - developerAmount;
+
+            IWBERA(address(token)).deposit{value: balance}();
+            
+            token.safeTransfer(developer, developerAmount);
+            token.safeTransfer(treasury, treasuryAmount);
+
+            uint256 totalIncentiveAmount = bribeAmount + incentivesAmount;
+            if (activeBribes) {
+                if (activeIncentives) {
+                    token.safeTransfer(incentives, incentivesAmount);
+                    token.safeApprove(bribe, 0);
+                    token.safeApprove(bribe, bribeAmount);
+                    IBribe(bribe).notifyRewardAmount(address(token), bribeAmount);
+                    emit Plugin__ClaimedAndDistributed(bribeAmount, incentivesAmount, developerAmount, treasuryAmount);
+                } else {
+                    token.safeApprove(bribe, 0);
+                    token.safeApprove(bribe, totalIncentiveAmount);
+                    IBribe(bribe).notifyRewardAmount(address(token), totalIncentiveAmount);
+                    emit Plugin__ClaimedAndDistributed(totalIncentiveAmount, 0, developerAmount, treasuryAmount);
+                }
             } else {
-                token.safeTransfer(treasury, balance - fee);
+                token.safeTransfer(incentives, totalIncentiveAmount);
+                emit Plugin__ClaimedAndDistributed(0, totalIncentiveAmount, developerAmount, treasuryAmount);
             }
-            emit Plugin__ClaimedAndDistributed(balance);
         }
     }
 
@@ -190,26 +209,54 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
 
     /*----------  RESTRICTED FUNCTIONS  ---------------------------------*/
 
-    function setAutoBribe(bool _autoBribe) external onlyOwner {
-        autoBribe = _autoBribe;
-        emit Plugin__AutoBribeSet(autoBribe);
+    /**
+     * @notice Owner can enable/disable auto-bribe (where fees are sent to the bribe contract instead of the treasury).
+     * @param _activeBribes The new boolean setting.
+     */
+    function setActiveBribes(bool _activeBribes) external onlyOwner {
+        activeBribes = _activeBribes;
+        emit Plugin__ActiveBribesSet(activeBribes);
     }
 
+    /**
+     * @notice Owner can enable/disable active incentives (where fees are sent to the incentives contract instead of the treasury).
+     * @param _activeIncentives The new boolean setting.
+     */
+    function setActiveIncentives(bool _activeIncentives) external onlyOwner {
+        activeIncentives = _activeIncentives;
+        emit Plugin__ActiveIncentivesSet(activeIncentives);
+    }
+
+    /**
+     * @notice Owner can update the treasury address.
+     * @param _treasury The new treasury address.
+     */
     function setTreasury(address _treasury) external onlyOwner {
         if (_treasury == address(0)) revert Plugin__InvalidZeroAddress();
         treasury = _treasury;
         emit Plugin__TreasurySet(treasury);
     }
 
-    function setDeveloper(address _developer) external {      
+    /**
+     * @notice Owner can update the developer address.
+     * @param _developer The new developer address.
+     */
+    function setDeveloper(address _developer) external {
         if (msg.sender != developer) revert Plugin__NotAuthorizedDeveloper();
         if (_developer == address(0)) revert Plugin__InvalidZeroAddress();
         developer = _developer;
         emit Plugin__DeveloperSet(developer);
     }
 
+    function setIncentives(address _incentives) external onlyOwner {
+        if (_incentives == address(0)) revert Plugin__InvalidZeroAddress();
+        incentives = _incentives;
+        emit Plugin__IncentivesSet(incentives);
+    }
+
     function setGauge(address _gauge) external onlyVoter {
         gauge = _gauge;
+    }
 
     function setBribe(address _bribe) external onlyVoter {
         bribe = _bribe;

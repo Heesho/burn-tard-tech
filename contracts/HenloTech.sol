@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface IPlugin {
@@ -16,22 +15,21 @@ interface IPlugin {
 }
 
 contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuard, Ownable {
-    using SafeERC20 for IERC20;
     using Math for uint256;
 
     /*----------  CONSTANTS  --------------------------------------------*/
 
-    uint256 public constant INITIAL_TUITION = 0.01 ether;
-
     /*----------  STATE VARIABLES  --------------------------------------*/
 
-    address public immutable token;
     address public plugin;
 
     uint256 public nextTokenId;
+    uint256 public initialTuition = 1 ether;
     uint256 public classSize = 10;
     uint256 public graduationRequirement = 10 ether;
+    bool public openAdmissions;
 
+    mapping(address => bool) public account_Admitted;
     mapping(uint256 => uint256) public id_Tuition;
     mapping(uint256 => uint256) public id_LastPlagiarized;
     mapping(uint256 => address) public id_Creator;
@@ -41,6 +39,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     /*----------  ERRORS ------------------------------------------------*/
 
     error HenloTech__TransferDisabled();
+    error HenloTech__NotAdmitted();
     error HenloTech__NotWorksOwner();
     error HenloTech__InvalidWorks();
     error HenloTech__FullClass();
@@ -49,30 +48,34 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     error HenloTech__WorksExpelled();
     error HenloTech__InsufficientCredits();
     error HenloTech__AlreadyInitialized();
+    error HenloTech__InvalidTuitionAmount();
+    error HenloTech__TransferFailed();
     
     /*----------  EVENTS ------------------------------------------------*/
 
     event HenloTech__Enrolled(address indexed creator, uint256 indexed tokenId, string uri);
     event HenloTech__Plagiarized(address indexed newOwner, uint256 indexed tokenId, uint256 newTuition);
-    event HenloTech__Expelled(address indexed owner, uint256 indexed tokenId);
-    event HenloTech__Graduated(address indexed owner, address indexed creator, uint256 indexed tokenId);
+    event HenloTech__Expelled(uint256 indexed tokenId);
+    event HenloTech__Graduated(uint256 indexed tokenId, uint256 permanentTuition);
     event HenloTech__ClassSizeSet(uint256 classSize);
+    event HenloTech__InitialTuitionSet(uint256 initialTuition);
+    event HenloTech__AccountAdmissionsSet(address indexed account, bool admitted);
+    event HenloTech__OpenAdmissionsSet(bool openAdmissions);
+    event HenloTech__GraduationRequirementSet(uint256 graduationRequirement);
     event HenloTech__Initialized(address plugin);
 
     /*----------  FUNCTIONS  --------------------------------------------*/
 
-    constructor(address _token, address _plugin) 
-        ERC721("HenloTech", "HenloTech")
-    {
-        token = _token;
-        plugin = _plugin;
-    }
+    constructor() ERC721("HenloTech", "HenloTech") {}
 
-    function enroll(address account, string memory uri) public nonReentrant {
+    function enroll(address account, string memory uri) public payable nonReentrant {
+        if (!openAdmissions && !account_Admitted[account]) revert HenloTech__NotAdmitted();
         if (nextTokenId > classSize) revert HenloTech__FullClass();
+        if (msg.value != initialTuition) revert HenloTech__InvalidTuitionAmount();
 
+        account_Admitted[account] = false;
         uint256 tokenId = nextTokenId++;
-        id_Tuition[tokenId] = INITIAL_TUITION;
+        id_Tuition[tokenId] = initialTuition;
         id_Creator[tokenId] = account;
         id_LastPlagiarized[tokenId] = block.timestamp;
         _safeMint(account, tokenId);
@@ -80,11 +83,13 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
 
         emit HenloTech__Enrolled(account, tokenId, uri);
 
-        IERC20(token).safeTransferFrom(msg.sender, plugin, INITIAL_TUITION);
-        IPlugin(plugin).depositFor(account, INITIAL_TUITION);
+        (bool success, ) = plugin.call{value: initialTuition}("");
+        if (!success) revert HenloTech__TransferFailed();
+
+        IPlugin(plugin).depositFor(account, initialTuition);
     }
 
-    function plagiarize(address account,uint256 tokenId) public nonReentrant {
+    function plagiarize(address account,uint256 tokenId) public payable nonReentrant {
         if (ownerOf(tokenId) == address(0)) revert HenloTech__InvalidWorks();
         if (id_Graduated[tokenId]) revert HenloTech__WorksGraduated();
         if (id_Expelled[tokenId]) revert HenloTech__WorksExpelled();
@@ -94,15 +99,22 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
         uint256 newTuition = previousTuition * 11 / 10;
         uint256 surplus = newTuition - previousTuition;
 
+        if (msg.value != newTuition) revert HenloTech__InvalidTuitionAmount();
+
         id_Tuition[tokenId] = newTuition;
         id_LastPlagiarized[tokenId] = block.timestamp;
         _transfer(previousOwner, account, tokenId);
 
-        emit HenloTech__Plagiarized(previousOwner, account, tokenId, newTuition);
+        emit HenloTech__Plagiarized(account, tokenId, newTuition);
 
-        IERC20(token).transferFrom(msg.sender, previousOwner, previousTuition + (surplus * 5 / 10));
-        IERC20(token).safeTransferFrom(msg.sender, plugin, surplus * 4 / 10);
-        IERC20(token).safeTransferFrom(msg.sender, id_Creator[tokenId], surplus * 1 / 10);
+        (bool success1,) = previousOwner.call{value: previousTuition + (surplus * 5 / 10)}("");
+        if (!success1) revert HenloTech__TransferFailed();
+
+        (bool success2,) = plugin.call{value: surplus * 4 / 10}("");
+        if (!success2) revert HenloTech__TransferFailed();
+
+        (bool success3,) = id_Creator[tokenId].call{value: surplus * 1 / 10}("");
+        if (!success3) revert HenloTech__TransferFailed();
 
         IPlugin(plugin).withdrawTo(previousOwner, previousTuition);
         IPlugin(plugin).depositFor(account, newTuition);
@@ -162,6 +174,11 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
         IPlugin(plugin).withdrawTo(owner, tuition);
     }
 
+    function setInitialTuition(uint256 _initialTuition) public onlyOwner {
+        initialTuition = _initialTuition;
+        emit HenloTech__InitialTuitionSet(_initialTuition);
+    }
+
     function setClassSize(uint256 _classSize) public onlyOwner {
         if (_classSize <= classSize) revert HenloTech__InvalidClassSize();
         classSize = _classSize;
@@ -171,6 +188,18 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     function setGraduationRequirement(uint256 _graduationRequirement) public onlyOwner {
         graduationRequirement = _graduationRequirement;
         emit HenloTech__GraduationRequirementSet(_graduationRequirement);
+    }
+
+    function setAccountAdmissions(address[] calldata _accounts, bool _admitted) public onlyOwner {
+        for (uint256 i = 0; i < _accounts.length; i++) {
+            account_Admitted[_accounts[i]] = _admitted;
+            emit HenloTech__AccountAdmissionsSet(_accounts[i], _admitted);
+        }
+    }
+
+    function setOpenAdmissions(bool _openAdmissions) public onlyOwner {
+        openAdmissions = _openAdmissions;
+        emit HenloTech__OpenAdmissionsSet(_openAdmissions);
     }
 
     function initialize(address _plugin) public onlyOwner {
