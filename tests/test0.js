@@ -11,7 +11,7 @@ const one = convert("1", 18);
 
 let owner, treasury, user0, user1, user2, user3;
 let base, voter;
-let henloTech, plugin, multicall, vaultFactory;
+let tech, plugin, multicall, vaultFactory;
 
 describe("local: test0", function () {
   before("Initial set up", async function () {
@@ -33,18 +33,20 @@ describe("local: test0", function () {
     voter = await voterArtifact.deploy();
     console.log("- Voter Initialized");
 
-    const henloTechArtifact = await ethers.getContractFactory("HenloTech");
-    henloTech = await henloTechArtifact.deploy();
-    console.log("- HenloTech Initialized");
+    const techArtifact = await ethers.getContractFactory("BurnTardTech");
+    tech = await techArtifact.deploy();
+    console.log("- BurnTardTech Initialized");
 
-    const pluginArtifact = await ethers.getContractFactory("HenloTechPlugin");
+    const pluginArtifact = await ethers.getContractFactory(
+      "BurnTardTechPlugin"
+    );
     plugin = await pluginArtifact.deploy(
       base.address,
       voter.address,
       [base.address],
       [base.address],
       vaultFactory.address,
-      henloTech.address,
+      tech.address,
       treasury.address,
       treasury.address
     );
@@ -52,13 +54,13 @@ describe("local: test0", function () {
 
     const multicallArtifact = await ethers.getContractFactory("Multicall");
     multicall = await multicallArtifact.deploy(
-      henloTech.address,
+      tech.address,
       plugin.address,
       await voter.OTOKEN()
     );
     console.log("- Multicall Initialized");
 
-    await henloTech.initialize(plugin.address);
+    await tech.initialize(plugin.address);
     await voter.setPlugin(plugin.address);
     console.log("- System set up");
 

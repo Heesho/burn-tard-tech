@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
@@ -14,7 +13,7 @@ interface IPlugin {
     function withdrawTo(address account, uint256 amount) external;
 }
 
-contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuard, Ownable {
+contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuard, Ownable {
     using Math for uint256;
 
     /*----------  CONSTANTS  --------------------------------------------*/
@@ -38,40 +37,40 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
 
     /*----------  ERRORS ------------------------------------------------*/
 
-    error HenloTech__TransferDisabled();
-    error HenloTech__NotAdmitted();
-    error HenloTech__NotWorksOwner();
-    error HenloTech__InvalidWorks();
-    error HenloTech__FullClass();
-    error HenloTech__InvalidClassSize();
-    error HenloTech__WorksGraduated();
-    error HenloTech__WorksExpelled();
-    error HenloTech__InsufficientCredits();
-    error HenloTech__AlreadyInitialized();
-    error HenloTech__InvalidTuitionAmount();
-    error HenloTech__TransferFailed();
+    error BurnTardTech__TransferDisabled();
+    error BurnTardTech__NotAdmitted();
+    error BurnTardTech__NotWorksOwner();
+    error BurnTardTech__InvalidWorks();
+    error BurnTardTech__FullClass();
+    error BurnTardTech__InvalidClassSize();
+    error BurnTardTech__WorksGraduated();
+    error BurnTardTech__WorksExpelled();
+    error BurnTardTech__InsufficientCredits();
+    error BurnTardTech__AlreadyInitialized();
+    error BurnTardTech__InvalidTuitionAmount();
+    error BurnTardTech__TransferFailed();
     
     /*----------  EVENTS ------------------------------------------------*/
 
-    event HenloTech__Enrolled(address indexed creator, uint256 indexed tokenId, string uri);
-    event HenloTech__Plagiarized(address indexed newOwner, uint256 indexed tokenId, uint256 newTuition);
-    event HenloTech__Expelled(uint256 indexed tokenId);
-    event HenloTech__Graduated(uint256 indexed tokenId, uint256 permanentTuition);
-    event HenloTech__ClassSizeSet(uint256 classSize);
-    event HenloTech__InitialTuitionSet(uint256 initialTuition);
-    event HenloTech__AccountAdmissionsSet(address indexed account, bool admitted);
-    event HenloTech__OpenAdmissionsSet(bool openAdmissions);
-    event HenloTech__GraduationRequirementSet(uint256 graduationRequirement);
-    event HenloTech__Initialized(address plugin);
+    event BurnTardTech__Enrolled(address indexed creator, uint256 indexed tokenId, string uri);
+    event BurnTardTech__Plagiarized(address indexed newOwner, uint256 indexed tokenId, uint256 newTuition);
+    event BurnTardTech__Expelled(uint256 indexed tokenId);
+    event BurnTardTech__Graduated(uint256 indexed tokenId, uint256 permanentTuition);
+    event BurnTardTech__ClassSizeSet(uint256 classSize);
+    event BurnTardTech__InitialTuitionSet(uint256 initialTuition);
+    event BurnTardTech__AccountAdmissionsSet(address indexed account, bool admitted);
+    event BurnTardTech__OpenAdmissionsSet(bool openAdmissions);
+    event BurnTardTech__GraduationRequirementSet(uint256 graduationRequirement);
+    event BurnTardTech__Initialized(address plugin);
 
     /*----------  FUNCTIONS  --------------------------------------------*/
 
-    constructor() ERC721("HenloTech", "HenloTech") {}
+    constructor() ERC721("BurnTardTech", "BurnTardTech") {}
 
     function enroll(address account, string memory uri) public payable nonReentrant {
-        if (!openAdmissions && !account_Admitted[account]) revert HenloTech__NotAdmitted();
-        if (nextTokenId > classSize) revert HenloTech__FullClass();
-        if (msg.value != initialTuition) revert HenloTech__InvalidTuitionAmount();
+        if (!openAdmissions && !account_Admitted[account]) revert BurnTardTech__NotAdmitted();
+        if (nextTokenId > classSize) revert BurnTardTech__FullClass();
+        if (msg.value != initialTuition) revert BurnTardTech__InvalidTuitionAmount();
 
         account_Admitted[account] = false;
         uint256 tokenId = nextTokenId++;
@@ -81,49 +80,49 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
         _safeMint(account, tokenId);
         _setTokenURI(tokenId, uri);
 
-        emit HenloTech__Enrolled(account, tokenId, uri);
+        emit BurnTardTech__Enrolled(account, tokenId, uri);
 
         (bool success, ) = plugin.call{value: initialTuition}("");
-        if (!success) revert HenloTech__TransferFailed();
+        if (!success) revert BurnTardTech__TransferFailed();
 
         IPlugin(plugin).depositFor(account, initialTuition);
     }
 
     function plagiarize(address account,uint256 tokenId) public payable nonReentrant {
-        if (ownerOf(tokenId) == address(0)) revert HenloTech__InvalidWorks();
-        if (id_Graduated[tokenId]) revert HenloTech__WorksGraduated();
-        if (id_Expelled[tokenId]) revert HenloTech__WorksExpelled();
+        if (ownerOf(tokenId) == address(0)) revert BurnTardTech__InvalidWorks();
+        if (id_Graduated[tokenId]) revert BurnTardTech__WorksGraduated();
+        if (id_Expelled[tokenId]) revert BurnTardTech__WorksExpelled();
 
         uint256 previousTuition = id_Tuition[tokenId];
         address previousOwner = ownerOf(tokenId);
         uint256 newTuition = previousTuition * 11 / 10;
         uint256 surplus = newTuition - previousTuition;
 
-        if (msg.value != newTuition) revert HenloTech__InvalidTuitionAmount();
+        if (msg.value != newTuition) revert BurnTardTech__InvalidTuitionAmount();
 
         id_Tuition[tokenId] = newTuition;
         id_LastPlagiarized[tokenId] = block.timestamp;
         _transfer(previousOwner, account, tokenId);
 
-        emit HenloTech__Plagiarized(account, tokenId, newTuition);
+        emit BurnTardTech__Plagiarized(account, tokenId, newTuition);
 
         (bool success1,) = previousOwner.call{value: previousTuition + (surplus * 5 / 10)}("");
-        if (!success1) revert HenloTech__TransferFailed();
+        if (!success1) revert BurnTardTech__TransferFailed();
 
         (bool success2,) = plugin.call{value: surplus * 4 / 10}("");
-        if (!success2) revert HenloTech__TransferFailed();
+        if (!success2) revert BurnTardTech__TransferFailed();
 
         (bool success3,) = id_Creator[tokenId].call{value: surplus * 1 / 10}("");
-        if (!success3) revert HenloTech__TransferFailed();
+        if (!success3) revert BurnTardTech__TransferFailed();
 
         IPlugin(plugin).withdrawTo(previousOwner, previousTuition);
         IPlugin(plugin).depositFor(account, newTuition);
     }
 
     function expell(uint256 tokenId) public nonReentrant {
-        if (msg.sender != ownerOf(tokenId)) revert HenloTech__NotWorksOwner();
-        if (id_Graduated[tokenId]) revert HenloTech__WorksGraduated();
-        if (id_Expelled[tokenId]) revert HenloTech__WorksExpelled();
+        if (msg.sender != ownerOf(tokenId)) revert BurnTardTech__NotWorksOwner();
+        if (id_Graduated[tokenId]) revert BurnTardTech__WorksGraduated();
+        if (id_Expelled[tokenId]) revert BurnTardTech__WorksExpelled();
 
         address owner = ownerOf(tokenId);
         uint256 tuition = id_Tuition[tokenId];
@@ -131,16 +130,16 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
         id_Expelled[tokenId] = true;
         classSize++;
 
-        emit HenloTech__Expelled(tokenId);
+        emit BurnTardTech__Expelled(tokenId);
 
         IPlugin(plugin).withdrawTo(owner, tuition);
     }
 
     function graduate(uint256 tokenId) public nonReentrant {
-        if (ownerOf(tokenId) == address(0)) revert HenloTech__InvalidWorks();
-        if (id_Expelled[tokenId]) revert HenloTech__WorksExpelled();
-        if (id_Graduated[tokenId]) revert HenloTech__WorksGraduated();
-        if (id_Tuition[tokenId] < graduationRequirement) revert HenloTech__InsufficientCredits();
+        if (ownerOf(tokenId) == address(0)) revert BurnTardTech__InvalidWorks();
+        if (id_Expelled[tokenId]) revert BurnTardTech__WorksExpelled();
+        if (id_Graduated[tokenId]) revert BurnTardTech__WorksGraduated();
+        if (id_Tuition[tokenId] < graduationRequirement) revert BurnTardTech__InsufficientCredits();
 
         address owner = ownerOf(tokenId);
         address creator = id_Creator[tokenId];
@@ -150,7 +149,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
         id_Graduated[tokenId] = true;
         classSize++;
 
-        emit HenloTech__Graduated(tokenId, permanentTuition);
+        emit BurnTardTech__Graduated(tokenId, permanentTuition);
 
         IPlugin(plugin).withdrawTo(owner, tuition);
         IPlugin(plugin).depositFor(owner, permanentTuition);
@@ -160,8 +159,8 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
     /*---------- RESTRICTED FUNCTIONS ----------------------------------*/
 
     function ownerExpell(uint256 tokenId) public nonReentrant onlyOwner {
-        if (id_Graduated[tokenId]) revert HenloTech__WorksGraduated();
-        if (id_Expelled[tokenId]) revert HenloTech__WorksExpelled();
+        if (id_Graduated[tokenId]) revert BurnTardTech__WorksGraduated();
+        if (id_Expelled[tokenId]) revert BurnTardTech__WorksExpelled();
 
         address owner = ownerOf(tokenId);
         uint256 tuition = id_Tuition[tokenId];
@@ -169,43 +168,43 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
         id_Expelled[tokenId] = true;
         classSize++;
 
-        emit HenloTech__Expelled(tokenId);
+        emit BurnTardTech__Expelled(tokenId);
 
         IPlugin(plugin).withdrawTo(owner, tuition);
     }
 
     function setInitialTuition(uint256 _initialTuition) public onlyOwner {
         initialTuition = _initialTuition;
-        emit HenloTech__InitialTuitionSet(_initialTuition);
+        emit BurnTardTech__InitialTuitionSet(_initialTuition);
     }
 
     function setClassSize(uint256 _classSize) public onlyOwner {
-        if (_classSize <= classSize) revert HenloTech__InvalidClassSize();
+        if (_classSize <= classSize) revert BurnTardTech__InvalidClassSize();
         classSize = _classSize;
-        emit HenloTech__ClassSizeSet(_classSize);
+        emit BurnTardTech__ClassSizeSet(_classSize);
     }
 
     function setGraduationRequirement(uint256 _graduationRequirement) public onlyOwner {
         graduationRequirement = _graduationRequirement;
-        emit HenloTech__GraduationRequirementSet(_graduationRequirement);
+        emit BurnTardTech__GraduationRequirementSet(_graduationRequirement);
     }
 
     function setAccountAdmissions(address[] calldata _accounts, bool _admitted) public onlyOwner {
         for (uint256 i = 0; i < _accounts.length; i++) {
             account_Admitted[_accounts[i]] = _admitted;
-            emit HenloTech__AccountAdmissionsSet(_accounts[i], _admitted);
+            emit BurnTardTech__AccountAdmissionsSet(_accounts[i], _admitted);
         }
     }
 
     function setOpenAdmissions(bool _openAdmissions) public onlyOwner {
         openAdmissions = _openAdmissions;
-        emit HenloTech__OpenAdmissionsSet(_openAdmissions);
+        emit BurnTardTech__OpenAdmissionsSet(_openAdmissions);
     }
 
     function initialize(address _plugin) public onlyOwner {
-        if (plugin != address(0)) revert HenloTech__AlreadyInitialized();
+        if (plugin != address(0)) revert BurnTardTech__AlreadyInitialized();
         plugin = _plugin;
-        emit HenloTech__Initialized(plugin);
+        emit BurnTardTech__Initialized(plugin);
     }
 
     /*----------  OVERRIDES  --------------------------------------------*/
@@ -215,7 +214,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
         address to,
         uint256 tokenId
     ) public virtual override(ERC721, IERC721) {
-        revert HenloTech__TransferDisabled();
+        revert BurnTardTech__TransferDisabled();
     }
 
     function safeTransferFrom(
@@ -223,7 +222,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
         address to,
         uint256 tokenId
     ) public virtual override(ERC721, IERC721) {
-        revert HenloTech__TransferDisabled();
+        revert BurnTardTech__TransferDisabled();
     }
 
     function safeTransferFrom(
@@ -232,7 +231,7 @@ contract HenloTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyGuar
         uint256 tokenId,
         bytes memory data
     ) public virtual override(ERC721, IERC721) {
-        revert HenloTech__TransferDisabled();
+        revert BurnTardTech__TransferDisabled();
     }
 
     function _beforeTokenTransfer(

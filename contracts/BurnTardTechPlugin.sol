@@ -36,7 +36,7 @@ interface IBerachainRewardVault {
 }
 
 contract VaultToken is ERC20, Ownable {
-    constructor() ERC20("HenloTech", "HenloTech") {}
+    constructor() ERC20("BurnTardTech", "BurnTardTech") {}
 
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
@@ -47,12 +47,12 @@ contract VaultToken is ERC20, Ownable {
     }
 }
 
-contract HenloTechPlugin is ReentrancyGuard, Ownable {
+contract BurnTardTechPlugin is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     /*----------  CONSTANTS  --------------------------------------------*/
 
-    string public constant SYMBOL = "HenloTech";
+    string public constant SYMBOL = "BurnTardTech";
     string public constant PROTOCOL = "GumBall6900";
     uint256 public constant DURATION = 7 days;
 
@@ -69,7 +69,7 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
     address private vaultToken;
     address private rewardVault;
 
-    address public immutable henloTech;
+    address public immutable burnTardTech;
     address public treasury;
     address public developer;
     address public incentives;
@@ -81,7 +81,7 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
     error Plugin__InvalidZeroInput();
     error Plugin__InvalidZeroAddress();
     error Plugin__NotAuthorizedVoter();
-    error Plugin__NotAuthorizedHenloTech();
+    error Plugin__NotAuthorizedBurnTardTech();
     error Plugin__NotAuthorizedDeveloper();
 
     /*----------  EVENTS ------------------------------------------------*/
@@ -107,8 +107,8 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
         _;
     }
 
-    modifier onlyHenloTech() {
-        if (msg.sender != henloTech) revert Plugin__NotAuthorizedHenloTech();
+    modifier onlyBurnTardTech() {
+        if (msg.sender != burnTardTech) revert Plugin__NotAuthorizedBurnTardTech();
         _;
     }
 
@@ -120,7 +120,7 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
         address[] memory _assetTokens, 
         address[] memory _bribeTokens,
         address _vaultFactory,
-        address _henloTech,
+        address _burnTardTech,
         address _treasury,
         address _developer
     ) {
@@ -128,7 +128,7 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
         voter = _voter;
         assetTokens = _assetTokens;
         bribeTokens = _bribeTokens;
-        henloTech = _henloTech;
+        burnTardTech = _burnTardTech;
         treasury = _treasury;
         developer = _developer;
         incentives = _treasury;
@@ -142,7 +142,7 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
         public
         virtual
         nonZeroInput(amount)
-        onlyHenloTech
+        onlyBurnTardTech
         nonReentrant
     {
         emit Plugin__Deposited(account, amount);
@@ -159,7 +159,7 @@ contract HenloTechPlugin is ReentrancyGuard, Ownable {
         public
         virtual
         nonZeroInput(amount)
-        onlyHenloTech
+        onlyBurnTardTech
         nonReentrant
     {
         emit Plugin__Withdrawn(account, amount);
