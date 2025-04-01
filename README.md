@@ -1,1 +1,1 @@
-# stickernet
+# burn-tard-tech
