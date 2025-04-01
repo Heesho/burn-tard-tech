@@ -4,7 +4,8 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomicfoundation/hardhat-verify");
 require("solidity-coverage");
 
-const CHAIN_ID = 80084; // Berachain Bartio
+const CHAIN_ID = 80069; // Berachain Bepolia chain id
+// const CHAIN_ID = 80094; // Berachain Mainnet chain id
 
 config();
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
@@ -30,17 +31,23 @@ module.exports = {
     hardhat: {},
   },
   etherscan: {
-    apiKey: {
-      bartio_testnet: "bartio_testnet", // apiKey is not required, just set a placeholder
-    },
+    apiKey: SCAN_API_KEY,
     customChains: [
       {
-        network: "bartio_testnet",
-        chainId: CHAIN_ID,
+        network: "berachain",
+        chainId: 80094,
+        urls: {
+          apiURL: "https://api.berascan.com/api",
+          browserURL: "https://berascan.com/",
+        },
+      },
+      {
+        network: "berachain_bepolia",
+        chainId: 80069,
         urls: {
           apiURL:
-            "https://api.routescan.io/v2/network/testnet/evm/80084/etherscan",
-          browserURL: "https://bartio.beratrail.io",
+            "https://api.routescan.io/v2/network/testnet/evm/80069/etherscan",
+          browserURL: "https://bepolia.beratrail.io",
         },
       },
     ],
