@@ -106,20 +106,20 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
 
         emit BurnTardTech__Plagiarized(account, tokenId, newTuition);
 
-        (bool success1,) = previousOwner.call{value: previousTuition + (surplus * 5 / 10)}("");
+        (bool success1,) = previousOwner.call{value: previousTuition + (surplus * 4 / 10)}("");
         if (!success1) revert BurnTardTech__TransferFailed();
 
         (bool success2,) = plugin.call{value: surplus * 4 / 10}("");
         if (!success2) revert BurnTardTech__TransferFailed();
 
-        (bool success3,) = id_Creator[tokenId].call{value: surplus * 1 / 10}("");
+        (bool success3,) = id_Creator[tokenId].call{value: surplus * 2 / 10}("");
         if (!success3) revert BurnTardTech__TransferFailed();
 
         IPlugin(plugin).withdrawTo(previousOwner, previousTuition);
         IPlugin(plugin).depositFor(account, newTuition);
     }
 
-    function expell(uint256 tokenId) public nonReentrant {
+    function expel(uint256 tokenId) public nonReentrant {
         if (msg.sender != ownerOf(tokenId)) revert BurnTardTech__NotWorksOwner();
         if (id_Graduated[tokenId]) revert BurnTardTech__WorksGraduated();
         if (id_Expelled[tokenId]) revert BurnTardTech__WorksExpelled();
@@ -260,4 +260,14 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
         return super.tokenURI(tokenId);
     }
 
+    /*----------  VIEW FUNCTIONS ----------------------------------------*/
+
+    function getCurrentTuition(uint256 tokenId) public view returns (uint256) {
+        return id_Tuition[tokenId];
+    }
+
+    function getNextTuition(uint256 tokenId) public view returns (uint256) {
+        return id_Tuition[tokenId] * 11 / 10;
+    }
+    
 }
