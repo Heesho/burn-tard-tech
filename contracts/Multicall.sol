@@ -15,7 +15,8 @@ interface IBurnTardTech {
     function classSize() external view returns (uint256);
     function nextTokenId() external view returns (uint256);
     function initialTuition() external view returns (uint256);
-    function graduationRequirement() external view returns (uint256);
+    function creditRequirement() external view returns (uint256);
+    function timeRequirement() external view returns (uint256);
     function openAdmissions() external view returns (bool);
     function account_Admitted(address account) external view returns (bool);
     function balanceOf(address account) external view returns (uint256);
@@ -75,7 +76,8 @@ contract Multicall {
         uint256 maxClassSize;
         uint256 nextTokenId;      // total NFTs minted
         uint256 initialTuition;   // cost to mint
-        uint256 graduationRequirement;
+        uint256 creditRequirement;
+        uint256 timeRequirement;
         bool isOpenAdmissions;
         uint256 totalValueLocked; // total ETH staked in plugin
     }
@@ -116,7 +118,7 @@ contract Multicall {
         workState.uri = IBurnTardTech(burnTardTech).tokenURI(tokenId);
         workState.isGraduated = IBurnTardTech(burnTardTech).id_Graduated(tokenId);
         workState.isExpelled = IBurnTardTech(burnTardTech).id_Expelled(tokenId);
-        workState.canGraduate = workState.currentTuition >= IBurnTardTech(burnTardTech).graduationRequirement();
+        workState.canGraduate = workState.currentTuition >= IBurnTardTech(burnTardTech).creditRequirement();
     }
 
     function getClass() external view returns (ClassState memory classState) {
@@ -124,7 +126,8 @@ contract Multicall {
         classState.maxClassSize = IBurnTardTech(burnTardTech).classSize();
         classState.nextTokenId = IBurnTardTech(burnTardTech).nextTokenId();
         classState.initialTuition = IBurnTardTech(burnTardTech).initialTuition();
-        classState.graduationRequirement = IBurnTardTech(burnTardTech).graduationRequirement();
+        classState.creditRequirement = IBurnTardTech(burnTardTech).creditRequirement();
+        classState.timeRequirement = IBurnTardTech(burnTardTech).timeRequirement();
         classState.isOpenAdmissions = IBurnTardTech(burnTardTech).openAdmissions();
         classState.totalValueLocked = IPlugin(plugin).totalSupply();
     }

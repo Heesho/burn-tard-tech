@@ -25,7 +25,8 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
     uint256 public nextTokenId;
     uint256 public initialTuition = 1 ether;
     uint256 public classSize = 10;
-    uint256 public graduationRequirement = 10 ether;
+    uint256 public creditRequirement = 10 ether;
+    uint256 public timeRequirement = 1 days;
     bool public openAdmissions;
 
     mapping(address => bool) public account_Admitted;
@@ -49,7 +50,9 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
     error BurnTardTech__AlreadyInitialized();
     error BurnTardTech__InvalidTuitionAmount();
     error BurnTardTech__TransferFailed();
-    
+    error BurnTardTech__InvalidAccount();
+    error BurnTardTech__InsufficientTime();
+
     /*----------  EVENTS ------------------------------------------------*/
 
     event BurnTardTech__Enrolled(address indexed creator, uint256 indexed tokenId, string uri);
@@ -60,7 +63,8 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
     event BurnTardTech__InitialTuitionSet(uint256 initialTuition);
     event BurnTardTech__AccountAdmissionsSet(address indexed account, bool admitted);
     event BurnTardTech__OpenAdmissionsSet(bool openAdmissions);
-    event BurnTardTech__GraduationRequirementSet(uint256 graduationRequirement);
+    event BurnTardTech__CreditRequirementSet(uint256 creditRequirement);
+    event BurnTardTech__TimeRequirementSet(uint256 timeRequirement);
     event BurnTardTech__Initialized(address plugin);
 
     /*----------  FUNCTIONS  --------------------------------------------*/
@@ -69,7 +73,7 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
 
     function enroll(address account, string memory uri) public payable nonReentrant {
         if (!openAdmissions && !account_Admitted[account]) revert BurnTardTech__NotAdmitted();
-        if (nextTokenId > classSize) revert BurnTardTech__FullClass();
+        if (nextTokenId >= classSize) revert BurnTardTech__FullClass();
         if (msg.value != initialTuition) revert BurnTardTech__InvalidTuitionAmount();
 
         account_Admitted[account] = false;
@@ -89,6 +93,7 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
     }
 
     function plagiarize(address account,uint256 tokenId) public payable nonReentrant {
+        if (account == address(0)) revert BurnTardTech__InvalidAccount();
         if (ownerOf(tokenId) == address(0)) revert BurnTardTech__InvalidWorks();
         if (id_Graduated[tokenId]) revert BurnTardTech__WorksGraduated();
         if (id_Expelled[tokenId]) revert BurnTardTech__WorksExpelled();
@@ -120,7 +125,7 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
     }
 
     function expel(uint256 tokenId) public nonReentrant {
-        if (msg.sender != ownerOf(tokenId)) revert BurnTardTech__NotWorksOwner();
+        if (msg.sender != ownerOf(tokenId) && msg.sender != owner()) revert BurnTardTech__NotWorksOwner();
         if (id_Graduated[tokenId]) revert BurnTardTech__WorksGraduated();
         if (id_Expelled[tokenId]) revert BurnTardTech__WorksExpelled();
 
@@ -139,7 +144,8 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
         if (ownerOf(tokenId) == address(0)) revert BurnTardTech__InvalidWorks();
         if (id_Expelled[tokenId]) revert BurnTardTech__WorksExpelled();
         if (id_Graduated[tokenId]) revert BurnTardTech__WorksGraduated();
-        if (id_Tuition[tokenId] < graduationRequirement) revert BurnTardTech__InsufficientCredits();
+        if (id_Tuition[tokenId] < creditRequirement) revert BurnTardTech__InsufficientCredits();
+        if (block.timestamp < id_LastPlagiarized[tokenId] + timeRequirement) revert BurnTardTech__InsufficientTime();
 
         address owner = ownerOf(tokenId);
         address creator = id_Creator[tokenId];
@@ -158,21 +164,6 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
 
     /*---------- RESTRICTED FUNCTIONS ----------------------------------*/
 
-    function ownerExpell(uint256 tokenId) public nonReentrant onlyOwner {
-        if (id_Graduated[tokenId]) revert BurnTardTech__WorksGraduated();
-        if (id_Expelled[tokenId]) revert BurnTardTech__WorksExpelled();
-
-        address owner = ownerOf(tokenId);
-        uint256 tuition = id_Tuition[tokenId];
-
-        id_Expelled[tokenId] = true;
-        classSize++;
-
-        emit BurnTardTech__Expelled(tokenId);
-
-        IPlugin(plugin).withdrawTo(owner, tuition);
-    }
-
     function setInitialTuition(uint256 _initialTuition) public onlyOwner {
         initialTuition = _initialTuition;
         emit BurnTardTech__InitialTuitionSet(_initialTuition);
@@ -184,9 +175,14 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
         emit BurnTardTech__ClassSizeSet(_classSize);
     }
 
-    function setGraduationRequirement(uint256 _graduationRequirement) public onlyOwner {
-        graduationRequirement = _graduationRequirement;
-        emit BurnTardTech__GraduationRequirementSet(_graduationRequirement);
+    function setCreditRequirement(uint256 _creditRequirement) public onlyOwner {
+        creditRequirement = _creditRequirement;
+        emit BurnTardTech__CreditRequirementSet(_creditRequirement);
+    }
+
+    function setTimeRequirement(uint256 _timeRequirement) public onlyOwner {
+        timeRequirement = _timeRequirement;
+        emit BurnTardTech__TimeRequirementSet(_timeRequirement);
     }
 
     function setAccountAdmissions(address[] calldata _accounts, bool _admitted) public onlyOwner {
@@ -261,10 +257,6 @@ contract BurnTardTech is ERC721, ERC721Enumerable, ERC721URIStorage, ReentrancyG
     }
 
     /*----------  VIEW FUNCTIONS ----------------------------------------*/
-
-    function getCurrentTuition(uint256 tokenId) public view returns (uint256) {
-        return id_Tuition[tokenId];
-    }
 
     function getNextTuition(uint256 tokenId) public view returns (uint256) {
         return id_Tuition[tokenId] * 11 / 10;
