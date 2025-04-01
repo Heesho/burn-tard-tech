@@ -172,7 +172,7 @@ contract BurnTardTechPlugin is ReentrancyGuard, Ownable {
     }
 
     function claimAndDistribute() external nonReentrant {
-        uint256 balance = token.balanceOf(address(this));
+        uint256 balance = address(this).balance;
         if (balance > DURATION) {
             uint256 bribeAmount = balance * 40 / 100;
             uint256 incentivesAmount = balance * 40 / 100;
