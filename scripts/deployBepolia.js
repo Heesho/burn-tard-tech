@@ -23,15 +23,15 @@ let tech, plugin, multicall;
 async function getContracts() {
   tech = await ethers.getContractAt(
     "contracts/BurnTardTech.sol:BurnTardTech",
-    "0xAa90118Aa7d14853a42ee6555E73e9205ee66bAE"
+    "0x6295CdF9db3A99acb5ff4eC5af8ebEc08586951f"
   );
   plugin = await ethers.getContractAt(
     "contracts/BurnTardTechPlugin.sol:BurnTardTechPlugin",
-    "0xeaB1A53350041eC038718e9b855d15FF471Ce172"
+    "0xd1F6920fF0bAaf628a0640B75F6506BCE3F66Ae2"
   );
   multicall = await ethers.getContractAt(
     "contracts/Multicall.sol:Multicall",
-    "0xC1559ffbe1479481E66e53F9f158850f9B46CB80"
+    "0x4426a748D168678eFF614077d099240B812cdcCA"
   );
   console.log("Contracts Retrieved");
 }
